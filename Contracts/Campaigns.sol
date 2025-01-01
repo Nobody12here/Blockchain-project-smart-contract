@@ -39,13 +39,19 @@ contract Campaign {
     string public imageUrl;
     uint public targetToAchieve;
     uint256 public deadline;
+    struct Contributions {
+        address contributor;
+        uint256 timestamp;
+        uint256 amount;
+    }
+
     address[] public contributers;
+    Contributions[] public contributions;
 
     modifier restricted() {
         require(msg.sender == manager);
         _;
     }
-
     constructor(
         uint minimun,
         address creator,
@@ -61,27 +67,40 @@ contract Campaign {
         CampaignDescription = description;
         imageUrl = image;
         targetToAchieve = target;
-        deadline =  _deadline;
+        deadline = _deadline;
     }
 
+    function getContributions() public view returns (Contributions[] memory) {
+        return contributions;
+    }
     function contibute() public payable {
         require(msg.value > minimunContribution);
         require(block.timestamp < deadline, "The fundraising is over");
         contributers.push(msg.sender);
+        contributions.push(
+            Contributions({
+                contributor: msg.sender,
+                amount: msg.value,
+                timestamp: block.timestamp
+            })
+        );
     }
 
     function withdraw() public restricted {
-    uint256 balance = address(this).balance;
+        uint256 balance = address(this).balance;
 
-    // Check if the campaign has achieved its target
-    require(balance >= targetToAchieve, "The target has not been reached yet");
-    // Ensure the fundraising period is over
-    require(block.timestamp > deadline, "The fundraising is not over yet");
+        // Check if the campaign has achieved its target
+        require(
+            balance >= targetToAchieve,
+            "The target has not been reached yet"
+        );
+        // Ensure the fundraising period is over
+        require(block.timestamp > deadline, "The fundraising is not over yet");
 
-    // Transfer the balance to the manager
-    (bool success, ) = payable(manager).call{value: balance}("");
-    require(success, "Transfer failed");
-}
+        // Transfer the balance to the manager
+        (bool success, ) = payable(manager).call{value: balance}("");
+        require(success, "Transfer failed");
+    }
 
     function getSummary()
         public
@@ -108,4 +127,5 @@ contract Campaign {
             targetToAchieve
         );
     }
+    
 }
